@@ -35,22 +35,32 @@ type Error interface {
 
 var _ Error = (*internal.PGError)(nil)
 
-func isBadConn(err error, allowTimeout bool) bool {
+func isBadConn(err error, allowTimeout bool) (bool, string) {
 	if err == nil {
-		return false
+		return false, ""
 	}
 	if _, ok := err.(internal.Error); ok {
-		return false
+		return false, ""
 	}
 	if pgErr, ok := err.(Error); ok {
-		return pgErr.Field('S') == "FATAL"
+		switch pgErr.Field('V') {
+		case "FATAL", "PANIC":
+			return true, ""
+		}
+		switch pgErr.Field('C') {
+		case "25P02": // current transaction is aborted
+			return true, "25P02"
+		case "57014": // canceling statement due to user request
+			return true, "57014"
+		}
+		return false, ""
 	}
 	if allowTimeout {
 		if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
-			return !netErr.Temporary()
+			return !netErr.Temporary(), ""
 		}
 	}
-	return true
+	return true, ""
 }
 
 //------------------------------------------------------------------------------

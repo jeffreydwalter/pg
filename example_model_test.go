@@ -11,7 +11,8 @@ import (
 
 func modelDB() *pg.DB {
 	db := pg.Connect(&pg.Options{
-		User: "postgres",
+		User:     "postgres",
+		Password: "postgres",
 	})
 
 	err := createTestSchema(db)
@@ -351,7 +352,7 @@ func ExampleDB_Model_selectWhereGroup() {
 
 	var books []Book
 	err := db.Model(&books).
-		WhereGroup(func(q *orm.Query) (*orm.Query, error) {
+		WhereGroup(func(q *pg.Query) (*pg.Query, error) {
 			q = q.WhereOr("id = 1").
 				WhereOr("id = 2")
 			return q, nil
@@ -443,7 +444,7 @@ func ExampleDB_Model_selectApplyFunc() {
 	var authorId int
 	var editorId int
 
-	filter := func(q *orm.Query) (*orm.Query, error) {
+	filter := func(q *pg.Query) (*pg.Query, error) {
 		if authorId != 0 {
 			q = q.Where("author_id = ?", authorId)
 		}
@@ -581,10 +582,9 @@ func ExampleDB_Model_hasOne() {
 	// SELECT
 	//   "user".*,
 	//   "profile"."id" AS "profile__id",
-	//   "profile"."lang" AS "profile__lang",
-	//   "profile"."user_id" AS "profile__user_id"
+	//   "profile"."lang" AS "profile__lang"
 	// FROM "users" AS "user"
-	// LEFT JOIN "profiles" AS "profile" ON "profile"."user_id" = "user"."id"
+	// LEFT JOIN "profiles" AS "profile" ON "profile"."id" = "user"."profile_id"
 
 	var users []User
 	err := db.Model(&users).
@@ -638,9 +638,10 @@ func ExampleDB_Model_belongsTo() {
 	// SELECT
 	//   "user".*,
 	//   "profile"."id" AS "profile__id",
-	//   "profile"."lang" AS "profile__lang"
+	//   "profile"."lang" AS "profile__lang",
+	//   "profile"."user_id" AS "profile__user_id"
 	// FROM "users" AS "user"
-	// LEFT JOIN "profiles" AS "profile" ON "profile"."id" = "user"."profile_id"
+	// LEFT JOIN "profiles" AS "profile" ON "profile"."user_id" = "user"."id"
 
 	var users []User
 	err := db.Model(&users).
@@ -700,7 +701,7 @@ func ExampleDB_Model_hasMany() {
 	var user User
 	err := db.Model(&user).
 		Column("user.*").
-		Relation("Profiles", func(q *orm.Query) (*orm.Query, error) {
+		Relation("Profiles", func(q *pg.Query) (*pg.Query, error) {
 			return q.Where("active IS TRUE"), nil
 		}).
 		First()

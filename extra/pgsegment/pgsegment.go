@@ -3,13 +3,18 @@ package pgsegment
 import (
 	"io"
 
-	"github.com/go-pg/pg/v10/pgjson"
 	"github.com/segmentio/encoding/json"
+
+	"github.com/go-pg/pg/v10/pgjson"
 )
 
 var _ pgjson.Provider = (*JSONProvider)(nil)
 
 type JSONProvider struct{}
+
+func NewJSONProvider() JSONProvider {
+	return JSONProvider{}
+}
 
 func (JSONProvider) Marshal(v interface{}) ([]byte, error) {
 	return json.Marshal(v)

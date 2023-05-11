@@ -5,12 +5,13 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/go-pg/pg/v10"
-	"github.com/go-pg/pg/v10/orm"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
+
+	"github.com/go-pg/pg/v10"
+	"github.com/go-pg/pg/v10/orm"
 )
 
 var tracer = otel.Tracer("github.com/go-pg/pg")
@@ -22,9 +23,13 @@ type queryOperation interface {
 // TracingHook is a pg.QueryHook that adds OpenTelemetry instrumentation.
 type TracingHook struct{}
 
+func NewTracingHook() *TracingHook {
+	return new(TracingHook)
+}
+
 var _ pg.QueryHook = (*TracingHook)(nil)
 
-func (h TracingHook) BeforeQuery(ctx context.Context, _ *pg.QueryEvent) (context.Context, error) {
+func (h *TracingHook) BeforeQuery(ctx context.Context, _ *pg.QueryEvent) (context.Context, error) {
 	if !trace.SpanFromContext(ctx).IsRecording() {
 		return ctx, nil
 	}
@@ -33,7 +38,12 @@ func (h TracingHook) BeforeQuery(ctx context.Context, _ *pg.QueryEvent) (context
 	return ctx, nil
 }
 
-func (h TracingHook) AfterQuery(ctx context.Context, evt *pg.QueryEvent) error {
+func (h *TracingHook) AfterQuery(ctx context.Context, evt *pg.QueryEvent) error {
+	const (
+		softQueryLimit = 5000
+		hardQueryLimit = 10000
+	)
+
 	span := trace.SpanFromContext(ctx)
 	if !span.IsRecording() {
 		return nil
@@ -47,6 +57,7 @@ func (h TracingHook) AfterQuery(ctx context.Context, evt *pg.QueryEvent) error {
 	}
 
 	var query string
+
 	if operation == orm.InsertOp {
 		b, err := evt.UnformattedQuery()
 		if err != nil {
@@ -58,6 +69,14 @@ func (h TracingHook) AfterQuery(ctx context.Context, evt *pg.QueryEvent) error {
 		if err != nil {
 			return err
 		}
+
+		if len(b) > softQueryLimit {
+			b, err = evt.UnformattedQuery()
+			if err != nil {
+				return err
+			}
+		}
+
 		query = string(b)
 	}
 
@@ -74,9 +93,8 @@ func (h TracingHook) AfterQuery(ctx context.Context, evt *pg.QueryEvent) error {
 		span.SetName(strings.TrimSpace(name))
 	}
 
-	const queryLimit = 5000
-	if len(query) > queryLimit {
-		query = query[:queryLimit]
+	if len(query) > hardQueryLimit {
+		query = query[:hardQueryLimit]
 	}
 
 	fn, file, line := funcFileLine("github.com/go-pg/pg")

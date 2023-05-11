@@ -483,7 +483,7 @@ func (q *Query) WhereOr(condition string, params ...interface{}) *Query {
 // WhereGroup encloses conditions added in the function in parentheses.
 //
 //    q.Where("TRUE").
-//    	WhereGroup(func(q *orm.Query) (*orm.Query, error) {
+//    	WhereGroup(func(q *pg.Query) (*pg.Query, error) {
 //    		q = q.WhereOr("FALSE").WhereOr("TRUE").
 //    		return q, nil
 //    	})
@@ -498,7 +498,7 @@ func (q *Query) WhereGroup(fn func(*Query) (*Query, error)) *Query {
 // WhereGroup encloses conditions added in the function in parentheses.
 //
 //    q.Where("TRUE").
-//    	WhereNotGroup(func(q *orm.Query) (*orm.Query, error) {
+//    	WhereNotGroup(func(q *pg.Query) (*pg.Query, error) {
 //    		q = q.WhereOr("FALSE").WhereOr("TRUE").
 //    		return q, nil
 //    	})
@@ -513,7 +513,7 @@ func (q *Query) WhereNotGroup(fn func(*Query) (*Query, error)) *Query {
 // WhereOrGroup encloses conditions added in the function in parentheses.
 //
 //    q.Where("TRUE").
-//    	WhereOrGroup(func(q *orm.Query) (*orm.Query, error) {
+//    	WhereOrGroup(func(q *pg.Query) (*pg.Query, error) {
 //    		q = q.Where("FALSE").Where("TRUE").
 //    		return q, nil
 //    	})
@@ -528,7 +528,7 @@ func (q *Query) WhereOrGroup(fn func(*Query) (*Query, error)) *Query {
 // WhereOrGroup encloses conditions added in the function in parentheses.
 //
 //    q.Where("TRUE").
-//    	WhereOrGroup(func(q *orm.Query) (*orm.Query, error) {
+//    	WhereOrGroup(func(q *pg.Query) (*pg.Query, error) {
 //    		q = q.Where("FALSE").Where("TRUE").
 //    		return q, nil
 //    	})
@@ -568,6 +568,11 @@ func (q *Query) whereGroup(conj string, fn func(*Query) (*Query, error)) *Query 
 // WhereIn is a shortcut for Where and pg.In.
 func (q *Query) WhereIn(where string, slice interface{}) *Query {
 	return q.Where(where, types.In(slice))
+}
+
+// WhereInOr is a shortcut for WhereOr and pg.In.
+func (q *Query) WhereInOr(where string, slice interface{}) *Query {
+	return q.WhereOr(where, types.In(slice))
 }
 
 // WhereInMulti is a shortcut for Where and pg.InMulti.
@@ -1603,7 +1608,7 @@ func (q wherePKStructQuery) AppendQuery(fmter QueryFormatter, b []byte) ([]byte,
 func appendColumnAndValue(
 	fmter QueryFormatter, b []byte, v reflect.Value, alias types.Safe, fields []*Field,
 ) []byte {
-	isPlaceholder := isPlaceholderFormatter(fmter)
+	isPlaceholder := isTemplateFormatter(fmter)
 	for i, f := range fields {
 		if i > 0 {
 			b = append(b, " AND "...)

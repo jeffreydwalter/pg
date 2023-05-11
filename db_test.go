@@ -34,6 +34,8 @@ func TestGinkgo(t *testing.T) {
 
 func pgOptions() *pg.Options {
 	return &pg.Options{
+		User:      "postgres",
+		Password:  "postgres",
 		TLSConfig: getTLSConfig(),
 
 		MaxRetries:      1,
@@ -1394,10 +1396,10 @@ var _ = Describe("ORM", func() {
 				Relation("Editor.Avatar").
 				Relation("Genres").
 				Relation("Comments").
-				Relation("Translations", func(q *orm.Query) (*orm.Query, error) {
+				Relation("Translations", func(q *pg.Query) (*pg.Query, error) {
 					return q.Order("id"), nil
 				}).
-				Relation("Translations.Comments", func(q *orm.Query) (*orm.Query, error) {
+				Relation("Translations.Comments", func(q *pg.Query) (*pg.Query, error) {
 					return q.Order("text"), nil
 				}).
 				First()
@@ -2074,7 +2076,7 @@ var _ = Describe("ORM", func() {
 		var book Book
 		err := db.Model(&book).
 			Column("book.id").
-			Relation("Translations", func(q *orm.Query) (*orm.Query, error) {
+			Relation("Translations", func(q *pg.Query) (*pg.Query, error) {
 				return q.Where("lang = 'ru'"), nil
 			}).
 			First()
@@ -2091,7 +2093,7 @@ var _ = Describe("ORM", func() {
 		var book Book
 		err := db.Model(&book).
 			Column("book.id").
-			Relation("Genres", func(q *orm.Query) (*orm.Query, error) {
+			Relation("Genres", func(q *pg.Query) (*pg.Query, error) {
 				return q.Where("genre__rating > 999"), nil
 			}).
 			First()
@@ -2575,14 +2577,14 @@ func TestColumnReuse(t *testing.T) {
 
 	for _, user := range users {
 		ks := []string{}
-		for k, _ := range user {
+		for k := range user {
 			ks = append(ks, k)
 		}
 		require.ElementsMatch(t, []string{"name", "id", "emails"}, ks)
 	}
 	for _, story := range stories {
 		ks := []string{}
-		for k, _ := range story {
+		for k := range story {
 			ks = append(ks, k)
 		}
 		require.ElementsMatch(t, []string{"id", "title", "author_id"}, ks)
